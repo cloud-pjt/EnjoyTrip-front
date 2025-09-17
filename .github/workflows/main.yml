@@ -1,0 +1,53 @@
+name: Build and Push Vue Frontend to ECR
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout 코드
+      - name: Checkout source
+        uses: actions/checkout@v3
+
+      # 2. Node.js 환경 설정
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      # 3. Vue 빌드 (dist 생성)
+      - name: Install dependencies and build
+        run: |
+          npm install
+          npm run build
+
+      # 4. 현재 시간 태그 (선택)
+      - name: Get current time
+        id: current-time
+        uses: 1466587594/get-current-time@v2
+        with:
+          format: YYYYMMDD-HHmmss
+          utcOffset: "+09:00"
+
+      # 5. AWS 로그인
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-2
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      # 6. Docker 빌드 & Push
+      - name: Build, tag, and push image to Amazon ECR
+        run: |
+          docker build -t test:${{steps.current-time.outputs.formattedTime}} . 
+          docker tag test:${{steps.current-time.outputs.formattedTime}} 868422696413.dkr.ecr.ap-northeast-2.amazonaws.com/sample:${{steps.current-time.outputs.formattedTime}} 
+          docker push 868422696413.dkr.ecr.ap-northeast-2.amazonaws.com/test:${{steps.current-time.outputs.formattedTime}}
