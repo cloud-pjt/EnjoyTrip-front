@@ -41,7 +41,7 @@ function scrollSection() {
 </script>
 
 <template>
-    <div id="background" class="section">
+    <div id="background">
         <div class="header">
             <div class="color-overlay d-flex justify-content-center align-items-center">
                 <h1>Put It All Down For A While</h1>
@@ -51,13 +51,13 @@ function scrollSection() {
     <div class="sticky-top bg-white hidden-spacer"> </div>
     <TheHeadingNavbar :transparent="true" />
 
-    <div class="section">
+    <div>
         <div class="space"></div>
         <MainServiceInfo></MainServiceInfo>
     </div>
 
     <div class="space"></div>
-    <div class="section">
+    <div>
         <div class="space"></div>
         <MainSidoCard></MainSidoCard>
     </div>
