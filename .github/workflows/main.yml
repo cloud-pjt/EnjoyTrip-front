@@ -28,10 +28,10 @@ jobs:
       # 4. 현재 시간 태그 (선택)
       - name: Get current time
         id: current-time
-        uses: 1466587594/get-current-time@v2
-        with:
-          format: YYYYMMDD-HHmmss
-          utcOffset: "+09:00"
+        run: echo "formattedTime=$(date +'%Y%m%d-%H%M%S')" >> $GITHUB_OUTPUT
+
+      - name: Show Current Time
+        run: echo "Current time is ${{ steps.current-time.outputs.formattedTime }}"
 
       # 5. AWS 로그인
       - name: Configure AWS credentials
