@@ -49,5 +49,5 @@ jobs:
       - name: Build, tag, and push image to Amazon ECR
         run: |
           docker build -t test:${{steps.current-time.outputs.formattedTime}} . 
-          docker tag test:${{steps.current-time.outputs.formattedTime}} 868422696413.dkr.ecr.ap-northeast-2.amazonaws.com/sample:${{steps.current-time.outputs.formattedTime}} 
+          docker tag test:${{steps.current-time.outputs.formattedTime}} 868422696413.dkr.ecr.ap-northeast-2.amazonaws.com/test:${{steps.current-time.outputs.formattedTime}} 
           docker push 868422696413.dkr.ecr.ap-northeast-2.amazonaws.com/test:${{steps.current-time.outputs.formattedTime}}
