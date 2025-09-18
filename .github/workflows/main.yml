@@ -72,8 +72,9 @@ jobs:
 
       - name: Commit and push
         run: |
-          cd manifests
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
+          cd k8s/frontend
+          git config user.name "sdpup"
+          git config user.email "epflswu12@gmail.com"
           git commit -am "Update frontend image to ${{ env.IMAGE_TAG }}"
+          git add -A
           git push
