@@ -76,5 +76,9 @@ jobs:
           cd k8s/frontend
           git config user.name "sdpup"
           git config user.email "epflswu12@gmail.com"
-          git commit -am "Update frontend image to ${{ env.IMAGE_TAG }}"
-          git push
+          if ! git diff --quiet; then
+            git commit -am "Update frontend image to ${{ steps.current-time.outputs.formattedTime }}"
+            git push
+          else
+            echo "No changes to commit."
+          fi
