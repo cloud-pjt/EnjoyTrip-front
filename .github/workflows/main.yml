@@ -52,9 +52,12 @@ jobs:
       # 6. Docker 빌드 & Push
       - name: Build, tag, and push image to Amazon ECR
         run: |
-          docker build -t $ECR_REPOSITORY:${{ env.IMAGE_TAG }} .
-          docker tag $ECR_REPOSITORY:${{ env.IMAGE_TAG }} $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.IMAGE_TAG }}
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.IMAGE_TAG }}
+          docker build -t test:${{steps.current-time.outputs.formattedTime}} . 
+          docker tag test:${{steps.current-time.outputs.formattedTime}} 868422696413.dkr.ecr.ap-northeast-2.amazonaws.com/test:${{steps.current-time.outputs.formattedTime}} 
+          docker push 868422696413.dkr.ecr.ap-northeast-2.amazonaws.com/test:${{steps.current-time.outputs.formattedTime}}
+#          docker build -t $ECR_REPOSITORY:${{ env.IMAGE_TAG }} .
+#          docker tag $ECR_REPOSITORY:${{ env.IMAGE_TAG }} $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.IMAGE_TAG }}
+#          docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.IMAGE_TAG }}
 
       - name: Checkout manifests repo
         uses: actions/checkout@v4
