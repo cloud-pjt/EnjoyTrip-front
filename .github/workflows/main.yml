@@ -66,7 +66,7 @@ jobs:
       - name: Checkout manifests repo
         uses: actions/checkout@v4
         with:
-          repository: Dhchung12/cloud_project
+          repository: cloud-pjt/enjoy-front-cd
           token: ${{ secrets.GH_PAT }}
 
       - name: Update frontend manifest
