@@ -9,7 +9,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      ECR_REGISTRY: public.ecr.aws/u9j3q0k2/enjoy-front
+      ECR_REGISTRY: public.ecr.aws/u9j3q0k2
       ECR_REPOSITORY: enjoy-front
 
     steps:
@@ -50,14 +50,20 @@ jobs:
 
       - name: Login to Amazon ECR
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
+        uses: aws-actions/amazon-ecr-login@v2
+        with:
+            registry-type: public
+        env:
+            AWS_DEFAULT_REGION: us-east-1
+            AWS_REGION: us-east-1
+
 
       # 6. Docker 빌드 & Push
       - name: Build, tag, and push image to Amazon ECR
         run: |
           docker build -t enjoy-front:${{steps.current-time.outputs.formattedTime}} . 
-          docker tag enjoy-front:${{steps.current-time.outputs.formattedTime}} public.ecr.aws/u9j3q0k2/enjoy-front/enjoy-front:${{steps.current-time.outputs.formattedTime}} 
-          docker push public.ecr.aws/u9j3q0k2/enjoy-front/enjoy-front:${{steps.current-time.outputs.formattedTime}}
+          docker tag enjoy-front:${{steps.current-time.outputs.formattedTime}} public.ecr.aws/u9j3q0k2/enjoy-front:${{steps.current-time.outputs.formattedTime}} 
+          docker push public.ecr.aws/u9j3q0k2/enjoy-front:${{steps.current-time.outputs.formattedTime}}
 #          docker build -t $ECR_REPOSITORY:${{ env.IMAGE_TAG }} .
 #          docker tag $ECR_REPOSITORY:${{ env.IMAGE_TAG }} $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.IMAGE_TAG }}
 #          docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.IMAGE_TAG }}
