@@ -68,7 +68,7 @@ jobs:
       - name: Update frontend manifest
         run: |
           cd k8s/frontend
-          sed -i "s|^\(\s*image:\s*\).*|\1${ECR_REGISTRY}/${ECR_REPOSITORY}:${{ env.IMAGE_TAG }}|" deployment-frontend.yaml
+          sed -i "s|^\(\s*image:\s*\).*|\1${ECR_REGISTRY}/${ECR_REPOSITORY}:${{ env.IMAGE_TAG }}|" enjoy-front.yaml
 
       - name: Commit and push
         run: |
