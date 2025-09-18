@@ -25,6 +25,7 @@ jobs:
       # 3. Vue 빌드 (dist 생성)
       - name: Install dependencies and build
         run: |
+          echo "VITE_KAKAO_MAP_API_SERVICE_KEY=${{ secrets.VITE_KAKAO_MAP_API_SERVICE_KEY }}" >> .env
           npm install
           npm run build
 
