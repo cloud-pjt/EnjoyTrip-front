@@ -3,6 +3,7 @@ name: Build and Push Vue Frontend to ECR
 on:
   push:
     branches: [ "main" ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -68,8 +69,8 @@ jobs:
 
       - name: Update frontend manifest
         run: |
-          cd k8s/frontend
-          sed -i "s|^\(\s*image:\s*\).*|\1${ECR_REGISTRY}/${ECR_REPOSITORY}:${{ env.IMAGE_TAG }}|" enjoy-front.yaml
+          cd frontend
+          sed -i "s|^\(\s*image:\s*\).*|\1${ECR_REGISTRY}/${ECR_REPOSITORY}:${{ steps.current-time.outputs.formattedTime }}|" enjoy-front.yaml
 
       - name: Commit and push
         run: |
