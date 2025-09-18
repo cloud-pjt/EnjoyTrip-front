@@ -7,6 +7,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      ECR_REGISTRY: 868422696413.dkr.ecr.ap-northeast-2.amazonaws.com
+      ECR_REPOSITORY: enjoytrip-front
 
     steps:
       # 1. Checkout 코드
@@ -32,6 +35,7 @@ jobs:
 
       - name: Show Current Time
         run: echo "Current time is ${{ steps.current-time.outputs.formattedTime }}"
+             echo "IMAGE_TAG=$(date +'%Y%m%d-%H%M%S')" >> $GITHUB_ENV
 
       # 5. AWS 로그인
       - name: Configure AWS credentials
@@ -47,7 +51,31 @@ jobs:
 
       # 6. Docker 빌드 & Push
       - name: Build, tag, and push image to Amazon ECR
+        env:
+          ECR_REGISTRY: 868422696413.dkr.ecr.ap-northeast-2.amazonaws.com
+          ECR_REPOSITORY: test
         run: |
-          docker build -t test:${{steps.current-time.outputs.formattedTime}} . 
-          docker tag test:${{steps.current-time.outputs.formattedTime}} 868422696413.dkr.ecr.ap-northeast-2.amazonaws.com/test:${{steps.current-time.outputs.formattedTime}} 
-          docker push 868422696413.dkr.ecr.ap-northeast-2.amazonaws.com/test:${{steps.current-time.outputs.formattedTime}}
+          docker build -t $ECR_REPOSITORY:${{ env.IMAGE_TAG }} .
+          docker tag $ECR_REPOSITORY:${{ env.IMAGE_TAG }} $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.IMAGE_TAG }}
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.IMAGE_TAG }}
+          docker tag $ECR_REPOSITORY:${{ env.IMAGE_TAG }} $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+      - name: Checkout manifests repo
+        uses: actions/checkout@v4
+        with:
+          repository: Dhchung12/cloud_project
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Update frontend manifest
+        run: |
+          cd k8s/frontend
+          sed -i "s|^\(\s*image:\s*\).*|\1${ECR_REGISTRY}/${ECR_REPOSITORY}:${{ env.IMAGE_TAG }}|" deployment-frontend.yaml
+
+      - name: Commit and push
+        run: |
+          cd manifests
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git commit -am "Update frontend image to ${{ env.IMAGE_TAG }}"
+          git push
