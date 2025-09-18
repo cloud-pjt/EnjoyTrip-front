@@ -27,6 +27,7 @@ jobs:
       - name: Install dependencies and build
         run: |
           echo "VITE_KAKAO_MAP_API_SERVICE_KEY=${{ secrets.VITE_KAKAO_MAP_API_SERVICE_KEY }}" >> .env
+          echo "VITE_VUE_API_URL=${{ secrets.VITE_VUE_API_URL }}" >> .env
           npm install
           npm run build
 
@@ -74,7 +75,7 @@ jobs:
 
       - name: Commit and push
         run: |
-          cd k8s/frontend
+          cd frontend
           git config user.name "sdpup"
           git config user.email "epflswu12@gmail.com"
           if ! git diff --quiet; then
