@@ -9,8 +9,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      ECR_REGISTRY: 868422696413.dkr.ecr.ap-northeast-2.amazonaws.com
-      ECR_REPOSITORY: test
+      ECR_REGISTRY: public.ecr.aws/u9j3q0k2/enjoy-front
+      ECR_REPOSITORY: enjoy-front
 
     steps:
       # 1. Checkout 코드
@@ -55,9 +55,9 @@ jobs:
       # 6. Docker 빌드 & Push
       - name: Build, tag, and push image to Amazon ECR
         run: |
-          docker build -t test:${{steps.current-time.outputs.formattedTime}} . 
-          docker tag test:${{steps.current-time.outputs.formattedTime}} 868422696413.dkr.ecr.ap-northeast-2.amazonaws.com/test:${{steps.current-time.outputs.formattedTime}} 
-          docker push 868422696413.dkr.ecr.ap-northeast-2.amazonaws.com/test:${{steps.current-time.outputs.formattedTime}}
+          docker build -t enjoy-front:${{steps.current-time.outputs.formattedTime}} . 
+          docker tag enjoy-front:${{steps.current-time.outputs.formattedTime}} public.ecr.aws/u9j3q0k2/enjoy-front:${{steps.current-time.outputs.formattedTime}} 
+          docker push public.ecr.aws/u9j3q0k2/enjoy-front:${{steps.current-time.outputs.formattedTime}}
 #          docker build -t $ECR_REPOSITORY:${{ env.IMAGE_TAG }} .
 #          docker tag $ECR_REPOSITORY:${{ env.IMAGE_TAG }} $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.IMAGE_TAG }}
 #          docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.IMAGE_TAG }}
