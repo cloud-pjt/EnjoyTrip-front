@@ -56,12 +56,12 @@ jobs:
       # 6. Docker 빌드 & Push
       - name: Build, tag, and push image to Amazon ECR
         run: |
-          docker build -t enjoy-front:${{steps.current-time.outputs.formattedTime}} . 
-          docker tag enjoy-front:${{steps.current-time.outputs.formattedTime}} 255260635764.dkr.ecr.ap-northeast-2.amazonaws.com/enjoy-front:${{steps.current-time.outputs.formattedTime}} 
-          docker push 255260635764.dkr.ecr.ap-northeast-2.amazonaws.com/enjoy-front:${{steps.current-time.outputs.formattedTime}}
-#          docker build -t $ECR_REPOSITORY:${{ env.IMAGE_TAG }} .
-#          docker tag $ECR_REPOSITORY:${{ env.IMAGE_TAG }} $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.IMAGE_TAG }}
-#          docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.IMAGE_TAG }}
+          docker build -t $ECR_REPOSITORY:${{ env.IMAGE_TAG }} .
+          docker tag $ECR_REPOSITORY:${{ env.IMAGE_TAG }} $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.IMAGE_TAG }}
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.IMAGE_TAG }}
+#          docker build -t enjoy-front:${{steps.current-time.outputs.formattedTime}} . 
+#          docker tag enjoy-front:${{steps.current-time.outputs.formattedTime}} 255260635764.dkr.ecr.ap-northeast-2.amazonaws.com/enjoy-front:${{steps.current-time.outputs.formattedTime}} 
+#          docker push 255260635764.dkr.ecr.ap-northeast-2.amazonaws.com/enjoy-front:${{steps.current-time.outputs.formattedTime}}
 
       - name: Checkout manifests repo
         uses: actions/checkout@v4
@@ -72,7 +72,7 @@ jobs:
       - name: Update frontend manifest
         run: |
           cd frontend
-          sed -i "s|^\(\s*image:\s*\).*|\1${ECR_REGISTRY}/${ECR_REPOSITORY}:${{ steps.current-time.outputs.formattedTime }}|" enjoy-front.yaml
+          sed -i "s|^\(\s*image:\s*\).*|\1${ECR_REGISTRY}/${ECR_REPOSITORY}:${{ env.IMAGE_TAG }}|" enjoy-front.yaml
 
       - name: Commit and push
         run: |
@@ -80,7 +80,7 @@ jobs:
           git config user.name "sdpup"
           git config user.email "epflswu12@gmail.com"
           if ! git diff --quiet; then
-            git commit -am "Update frontend image to ${{ steps.current-time.outputs.formattedTime }}"
+            git commit -am "Update frontend image to ${{ env.IMAGE_TAG }}"
             git push
           else
             echo "No changes to commit."
