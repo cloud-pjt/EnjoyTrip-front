@@ -32,8 +32,9 @@ jobs:
           npm run build
 
       # 4. 현재 시간 태그
-      - name: Get current time
-        run: echo "IMAGE_TAG=$(date +'%Y%m%d-%H%M%S')" >> $GITHUB_ENV
+      - name: Get current time (KST)
+        run: echo "IMAGE_TAG=$(TZ='Asia/Seoul' date +'%Y%m%d-%H%M%S')" >> $GITHUB_ENV
+
 
       - name: Show Current Time
         run: echo "Current time is $IMAGE_TAG"
