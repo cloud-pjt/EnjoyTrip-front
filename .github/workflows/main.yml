@@ -77,15 +77,16 @@ jobs:
           echo "📝 DEV kustomization 업데이트 완료"
           cat kustomization.yaml
       
-      - name: Commit and push DEV changes
+      - name: Commit and push DEV changes  
         run: |
           git config user.name "sdpup"
           git config user.email "epflswu12@gmail.com"
-          if ! git diff --quiet; then
-            git add .
+          if ! git diff --quiet frontend/; then
+            git add frontend/  # frontend 폴더만 추가
             git commit -m "🔧 Update DEV frontend image to ${{ env.IMAGE_TAG }}"
             git push
-            echo "✅ DEV 매니페스트 업데이트 완료"
+          else
+            echo "No frontend changes to commit."
           fi
       
       - name: Display next steps
@@ -181,12 +182,11 @@ jobs:
       
       - name: Commit and push PROD changes
         run: |
-          IMAGE_TAG=${{ steps.tag.outputs.IMAGE_TAG }}
           git config user.name "sdpup"
           git config user.email "epflswu12@gmail.com"
-          if ! git diff --quiet; then
-            git add .
-            git commit -m "🚀 Promote DEV image $IMAGE_TAG to PROD"
+          if ! git diff --quiet frontend/; then
+            git add frontend/  # frontend 폴더만 추가
+            git commit -m "🚀 Promote DEV image ${{ steps.tag.outputs.IMAGE_TAG }} to PROD"
             git push
             echo "✅ PROD 매니페스트 업데이트 완료"
           fi
