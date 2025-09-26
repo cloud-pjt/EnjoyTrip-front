@@ -55,7 +55,7 @@ jobs:
       - name: Build, tag, and push to DEV ECR
         run: |
           docker build \
-          -f docker.dev \
+          -f Dockerfile.dev \
           --build-arg VITE_VUE_API_URL=${{ secrets.VITE_VUE_API_URL }} \
           -t $ECR_REPOSITORY:${{ env.IMAGE_TAG }} .
           docker tag $ECR_REPOSITORY:${{ env.IMAGE_TAG }} $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.IMAGE_TAG }}
@@ -159,7 +159,7 @@ jobs:
 
           # docker.prod가 리포지토리 루트에 있을 때
           docker build \
-            -f docker.prod \
+            -f Dockerfile.prod \
             --build-arg VITE_VUE_API_URL=${{ secrets.VITE_VUE_API_URL }} \
             --build-arg VITE_KAKAO_MAP_API_SERVICE_KEY=${{ secrets.VITE_KAKAO_MAP_API_SERVICE_KEY }} \
             -t $ECR_REGISTRY/$PROD_REPOSITORY:$IMAGE_TAG .
