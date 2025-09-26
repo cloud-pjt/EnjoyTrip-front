@@ -67,6 +67,7 @@ jobs:
         with:
           repository: cloud-pjt/enjoy-cd
           token: ${{ secrets.GH_PAT }}
+          ref: develop
       
       - name: Install kustomize
         run: |
@@ -87,7 +88,7 @@ jobs:
           if ! git diff --quiet frontend/overlays/dev/; then
             git add frontend/overlays/dev/  # frontend 폴더만 추가
             git commit -m "🔧 Update DEV frontend image to ${{ env.IMAGE_TAG }}"
-            git push
+            git push origin develop
           else
             echo "No frontend changes to commit."
           fi
