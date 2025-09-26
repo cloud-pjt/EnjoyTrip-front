@@ -55,12 +55,13 @@ jobs:
       - name: Build, tag, and push to DEV ECR
         run: |
           docker build \
+          -f docker.dev \                   # ← 경량화 X 개발용 Dockerfile 지정
           --build-arg VITE_VUE_API_URL=${{ secrets.VITE_VUE_API_URL }} \
           -t $ECR_REPOSITORY:${{ env.IMAGE_TAG }} .
           docker tag $ECR_REPOSITORY:${{ env.IMAGE_TAG }} $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.IMAGE_TAG }}
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.IMAGE_TAG }}
           echo "✅ DEV 이미지 업로드 완료: $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.IMAGE_TAG }}"
-      
+
       - name: Checkout manifests repo
         uses: actions/checkout@v4
         with:
@@ -101,13 +102,14 @@ jobs:
           echo "   4. Environment: prod 선택 후 실행"
 
   promote-to-prod:
-    # PROD 환경: DEV 이미지를 PROD ECR로 복사
+    # PROD 환경: DEV 이미지를 복사하는 대신 docker.prod로 재빌드
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     env:
       ECR_REGISTRY: 255260635764.dkr.ecr.ap-northeast-2.amazonaws.com
       DEV_REPOSITORY: enjoy-front
       PROD_REPOSITORY: enjoy-front-prod
+
     steps:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
@@ -115,19 +117,17 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-northeast-2
-      
+
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v1
-      
+
       - name: Determine image tag to promote
         id: tag
         run: |
           if [ -n "${{ github.event.inputs.image_tag }}" ]; then
-            # 사용자가 태그를 직접 입력한 경우
             IMAGE_TAG="${{ github.event.inputs.image_tag }}"
             echo "🎯 사용자 지정 태그 사용: $IMAGE_TAG"
           else
-            # 최신 DEV 이미지 태그 자동 감지
             IMAGE_TAG=$(aws ecr describe-images \
               --repository-name $DEV_REPOSITORY \
               --region ap-northeast-2 \
@@ -135,67 +135,76 @@ jobs:
               --output text)
             echo "🔄 최신 DEV 이미지 태그 자동 선택: $IMAGE_TAG"
           fi
-          
-          # 태그가 유효한지 확인
+
           if [ "$IMAGE_TAG" = "null" ] || [ -z "$IMAGE_TAG" ]; then
             echo "❌ ERROR: DEV 레포지토리에서 유효한 이미지를 찾을 수 없습니다"
             exit 1
           fi
-          
+
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_OUTPUT
           echo "✅ 승격할 이미지 태그: $IMAGE_TAG"
-      
-      - name: Copy DEV image to PROD repository
+
+      # ⬇️ 소스 코드 체크아웃 (docker.prod와 프론트 소스가 필요)
+      - name: Checkout source
+        uses: actions/checkout@v3
+      # (모노리포에서 다른 폴더라면 path 지정 가능)
+      # with:
+      #   path: src
+
+      # ⬇️ docker.prod로 Multi-Stage 빌드 & 푸시 (Node 설치/빌드 불필요)
+      - name: Build and push PROD image (Multi-Stage)
         run: |
           IMAGE_TAG=${{ steps.tag.outputs.IMAGE_TAG }}
-          echo "🔄 DEV 이미지를 PROD로 복사 중..."
-          
-          # DEV에서 이미지 Pull
-          docker pull $ECR_REGISTRY/$DEV_REPOSITORY:$IMAGE_TAG
-          
-          # PROD 태그로 재태깅
-          docker tag $ECR_REGISTRY/$DEV_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$PROD_REPOSITORY:$IMAGE_TAG
-          
-          # PROD ECR로 Push  
+          echo "🏗️ docker.prod를 사용해 운영용 이미지 빌드 시작..."
+
+          # docker.prod가 리포지토리 루트에 있을 때
+          docker build \
+            -f docker.prod \
+            --build-arg VITE_VUE_API_URL=${{ secrets.VITE_VUE_API_URL }} \
+            --build-arg VITE_KAKAO_MAP_API_SERVICE_KEY=${{ secrets.VITE_KAKAO_MAP_API_SERVICE_KEY }} \
+            -t $ECR_REGISTRY/$PROD_REPOSITORY:$IMAGE_TAG .
+
           docker push $ECR_REGISTRY/$PROD_REPOSITORY:$IMAGE_TAG
-          
-          echo "✅ 이미지 복사 완료:"
-          echo "   FROM: $ECR_REGISTRY/$DEV_REPOSITORY:$IMAGE_TAG"
-          echo "   TO:   $ECR_REGISTRY/$PROD_REPOSITORY:$IMAGE_TAG"
-      
+          echo "✅ PROD Multi-Stage 이미지 업로드 완료: $ECR_REGISTRY/$PROD_REPOSITORY:$IMAGE_TAG"
+
+    # ⬇️ 매니페스트 레포 체크아웃 (작업공간 덮어쓰기 피하려면 path 지정 권장)
       - name: Checkout manifests repo
         uses: actions/checkout@v4
         with:
           repository: cloud-pjt/enjoy-cd
           token: ${{ secrets.GH_PAT }}
-      
+          path: cd-repo
+
       - name: Install kustomize
         run: |
           curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
           sudo mv kustomize /usr/local/bin/
-      
+
       - name: Update PROD kustomization
+        working-directory: cd-repo/frontend/overlays/prod
         run: |
           IMAGE_TAG=${{ steps.tag.outputs.IMAGE_TAG }}
-          cd frontend/overlays/prod
           kustomize edit set image $ECR_REGISTRY/$PROD_REPOSITORY=$ECR_REGISTRY/$PROD_REPOSITORY:$IMAGE_TAG
           echo "📝 PROD kustomization 업데이트 완료"
           cat kustomization.yaml
-      
+
       - name: Commit and push PROD changes
+        working-directory: cd-repo
         run: |
           git config user.name "sdpup"
           git config user.email "epflswu12@gmail.com"
           if ! git diff --quiet frontend/; then
-            git add frontend/  # frontend 폴더만 추가
-            git commit -m "🚀 Promote DEV image ${{ steps.tag.outputs.IMAGE_TAG }} to PROD"
+            git add frontend/
+            git commit -m "🚀 Promote DEV image ${{ steps.tag.outputs.IMAGE_TAG }} to PROD (rebuild with docker.prod)"
             git push
             echo "✅ PROD 매니페스트 업데이트 완료"
+          else
+            echo "No manifest changes to commit."
           fi
-      
+
       - name: Deployment summary
         run: |
           IMAGE_TAG=${{ steps.tag.outputs.IMAGE_TAG }}
           echo "🎉 PROD 배포 완료!"
           echo "📦 배포된 이미지: $ECR_REGISTRY/$PROD_REPOSITORY:$IMAGE_TAG"
-          echo "🔗 DEV에서 검증된 동일한 이미지가 PROD에 배포되었습니다."
+          echo "🔗 docker.prod(Multi-Stage)로 재빌드된 이미지가 PROD에 배포되었습니다."
