@@ -84,8 +84,8 @@ jobs:
         run: |
           git config user.name "sdpup"
           git config user.email "epflswu12@gmail.com"
-          if ! git diff --quiet frontend/; then
-            git add frontend/  # frontend 폴더만 추가
+          if ! git diff --quiet frontend/overlays/dev/; then
+            git add frontend/overlays/dev/  # frontend 폴더만 추가
             git commit -m "🔧 Update DEV frontend image to ${{ env.IMAGE_TAG }}"
             git push
           else
@@ -193,8 +193,8 @@ jobs:
         run: |
           git config user.name "sdpup"
           git config user.email "epflswu12@gmail.com"
-          if ! git diff --quiet frontend/; then
-            git add frontend/
+          if ! git diff --quiet frontend/overlays/prod/; then
+            git add git add frontend/overlays/prod/
             git commit -m "🚀 Promote DEV image ${{ steps.tag.outputs.IMAGE_TAG }} to PROD (rebuild with docker.prod)"
             git push
             echo "✅ PROD 매니페스트 업데이트 완료"
