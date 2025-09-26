@@ -1,5 +1,4 @@
 name: Build and Push Vue Frontend to ECR
-
 on:
   push:
     branches: [ "main" ]         # ➜ dev에 자동 반영
@@ -11,25 +10,22 @@ on:
         default: "prod"
         type: choice
         options: [ "prod" ]
-
 jobs:
   build:
     runs-on: ubuntu-latest
     env:
       ECR_REGISTRY: 255260635764.dkr.ecr.ap-northeast-2.amazonaws.com
-      ECR_REPOSITORY: enjoy-front
-
     steps:
       # 1. Checkout 코드
       - name: Checkout source
         uses: actions/checkout@v3
-
+      
       # 2. Node.js 환경 설정
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18'
-
+      
       # 3. Vue 빌드 (dist 생성)
       - name: Install dependencies and build
         run: |
@@ -37,77 +33,80 @@ jobs:
           echo "VITE_VUE_API_URL=${{ secrets.VITE_VUE_API_URL }}" >> .env
           npm install
           npm run build
-
+      
       # 4. 현재 시간 태그
       - name: Get current time (KST)
         run: echo "IMAGE_TAG=$(TZ='Asia/Seoul' date +'%Y%m%d-%H%M%S')" >> $GITHUB_ENV
-
-
+      
       - name: Show Current Time
         run: echo "Current time is $IMAGE_TAG"
-
-
-      # 5. AWS 로그인
+      
+      # 5. 대상 환경 선택: push=dev / 수동 클릭=prod
+      - name: Pick target environment and ECR repository
+        id: pick
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "ENV=prod" >> $GITHUB_OUTPUT
+            echo "ECR_REPOSITORY=enjoy-front-prod" >> $GITHUB_OUTPUT
+            echo "🚀 Target: PROD environment (enjoy-front-prod repository)"
+          else
+            echo "ENV=dev" >> $GITHUB_OUTPUT
+            echo "ECR_REPOSITORY=enjoy-front" >> $GITHUB_OUTPUT
+            echo "🔧 Target: DEV environment (enjoy-front repository)"
+          fi
+      
+      # 6. AWS 로그인
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-northeast-2
-
+      
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
-
-
-      # 6. Docker 빌드 & Push
+      
+      # 7. Docker 빌드 & Push (환경별 레포지토리)
       - name: Build, tag, and push image to Amazon ECR
         run: |
-          docker build -t $ECR_REPOSITORY:${{ env.IMAGE_TAG }} .
-          docker tag $ECR_REPOSITORY:${{ env.IMAGE_TAG }} $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.IMAGE_TAG }}
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.IMAGE_TAG }}
-
+          docker build -t ${{ steps.pick.outputs.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }} .
+          docker tag ${{ steps.pick.outputs.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }} $ECR_REGISTRY/${{ steps.pick.outputs.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+          docker push $ECR_REGISTRY/${{ steps.pick.outputs.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+          echo "✅ Pushed image: $ECR_REGISTRY/${{ steps.pick.outputs.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}"
+      
+      # 8. Checkout manifests repo
       - name: Checkout manifests repo
         uses: actions/checkout@v4
         with:
           repository: cloud-pjt/enjoy-cd
           token: ${{ secrets.GH_PAT }}
-          
-      # kustomize 설치 (edit set image 사용)
+      
+      # 9. kustomize 설치
       - name: Install kustomize
         run: |
           curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
           sudo mv kustomize /usr/local/bin/
-
-      # 대상 환경 선택: push=dev / 수동 클릭=prod
-      - name: Pick target env
-        id: pick
-        run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            echo "ENV=prod" >> $GITHUB_OUTPUT
-          else
-            echo "ENV=dev"  >> $GITHUB_OUTPUT
-          fi
-
-#      - name: Update frontend manifest
-#        run: |
-#          cd frontend
-#          sed -i "s|^\(\s*image:\s*\).*|\1${ECR_REGISTRY}/${ECR_REPOSITORY}:${{ env.IMAGE_TAG }}|" enjoy-front.yaml
-
-      # 이미지 태그를 Kustomize overlay에 반영
+      
+      # 10. 이미지 태그를 Kustomize overlay에 반영 (수정됨)
       - name: Update image tag in overlay
         run: |
           cd frontend/overlays/${{ steps.pick.outputs.ENV }}
-          kustomize edit set image nginx=$ECR_REGISTRY/$BACK_REPO:$IMAGE_TAG
-
+          # 환경별로 올바른 ECR 레포지토리 이미지로 업데이트
+          kustomize edit set image $ECR_REGISTRY/${{ steps.pick.outputs.ECR_REPOSITORY }}=$ECR_REGISTRY/${{ steps.pick.outputs.ECR_REPOSITORY }}:$IMAGE_TAG
+          echo "📝 Updated kustomization.yaml in ${{ steps.pick.outputs.ENV }} environment"
+          cat kustomization.yaml
+      
+      # 11. Commit and push
       - name: Commit and push
         run: |
-          cd frontend
           git config user.name "sdpup"
           git config user.email "epflswu12@gmail.com"
           if ! git diff --quiet; then
-            git commit -am "Update frontend image to ${{ env.IMAGE_TAG }}"
+            git add .
+            git commit -m "🚀 Update ${{ steps.pick.outputs.ENV }} frontend image to ${{ steps.pick.outputs.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}"
             git push
+            echo "✅ Committed and pushed changes"
           else
-            echo "No changes to commit."
+            echo "ℹ️  No changes to commit."
           fi
