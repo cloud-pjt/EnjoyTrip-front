@@ -34,14 +34,7 @@ jobs:
           npm install
           npm run build
       
-      # 4. 현재 시간 태그
-      - name: Get current time (KST)
-        run: echo "IMAGE_TAG=$(TZ='Asia/Seoul' date +'%Y%m%d-%H%M%S')" >> $GITHUB_ENV
-      
-      - name: Show Current Time
-        run: echo "Current time is $IMAGE_TAG"
-      
-      # 5. 대상 환경 선택: push=dev / 수동 클릭=prod
+      # 4. 대상 환경 선택: push=dev / 수동 클릭=prod
       - name: Pick target environment and ECR repository
         id: pick
         run: |
@@ -54,6 +47,16 @@ jobs:
             echo "ECR_REPOSITORY=enjoy-front" >> $GITHUB_OUTPUT
             echo "🔧 Target: DEV environment (enjoy-front repository)"
           fi
+      
+      # 5. 현재 시간 태그 (한 번만 생성)
+      - name: Get current time (KST) 
+        run: echo "IMAGE_TAG=$(TZ='Asia/Seoul' date +'%Y%m%d-%H%M%S')" >> $GITHUB_ENV
+      
+      - name: Show Build Info
+        run: |
+          echo "🏷️  Image Tag: $IMAGE_TAG"
+          echo "🎯 Target Environment: ${{ steps.pick.outputs.ENV }}"
+          echo "📦 ECR Repository: ${{ steps.pick.outputs.ECR_REPOSITORY }}"
       
       # 6. AWS 로그인
       - name: Configure AWS credentials
