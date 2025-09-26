@@ -194,7 +194,7 @@ jobs:
           git config user.name "sdpup"
           git config user.email "epflswu12@gmail.com"
           if ! git diff --quiet frontend/overlays/prod/; then
-            git add git add frontend/overlays/prod/
+            git add frontend/overlays/prod/
             git commit -m "🚀 Promote DEV image ${{ steps.tag.outputs.IMAGE_TAG }} to PROD (rebuild with docker.prod)"
             git push
             echo "✅ PROD 매니페스트 업데이트 완료"
