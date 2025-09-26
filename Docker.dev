@@ -1,0 +1,17 @@
+# 개발용 단일 스테이지 이미지
+FROM node:18-alpine
+WORKDIR /app
+
+# 패키지 파일만 먼저 복사 → 캐시 활용
+COPY package*.json ./
+RUN npm install
+
+# 전체 소스 복사 및 빌드
+COPY . .
+RUN npm run build
+
+# 정적 파일을 serve 패키지로 서빙
+RUN npm install -g serve
+
+EXPOSE 80
+CMD ["serve", "-s", "dist"]
