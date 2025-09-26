@@ -11,8 +11,8 @@ on:
         type: choice
         options: [ "prod" ]
       image_tag:
-        description: "DEV에서 사용할 이미지 태그 (예: 20250926-140544)"
-        required: true
+        description: "DEV 이미지 태그 (비워두면 최신 태그 자동 선택)"
+        required: false
         type: string
 
 jobs:
@@ -105,7 +105,6 @@ jobs:
       ECR_REGISTRY: 255260635764.dkr.ecr.ap-northeast-2.amazonaws.com
       DEV_REPOSITORY: enjoy-front
       PROD_REPOSITORY: enjoy-front-prod
-      IMAGE_TAG: ${{ github.event.inputs.image_tag }}
     steps:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
@@ -117,8 +116,35 @@ jobs:
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v1
       
+      - name: Determine image tag to promote
+        id: tag
+        run: |
+          if [ -n "${{ github.event.inputs.image_tag }}" ]; then
+            # 사용자가 태그를 직접 입력한 경우
+            IMAGE_TAG="${{ github.event.inputs.image_tag }}"
+            echo "🎯 사용자 지정 태그 사용: $IMAGE_TAG"
+          else
+            # 최신 DEV 이미지 태그 자동 감지
+            IMAGE_TAG=$(aws ecr describe-images \
+              --repository-name $DEV_REPOSITORY \
+              --region ap-northeast-2 \
+              --query 'sort_by(imageDetails,&imagePushedAt)[-1].imageTags[0]' \
+              --output text)
+            echo "🔄 최신 DEV 이미지 태그 자동 선택: $IMAGE_TAG"
+          fi
+          
+          # 태그가 유효한지 확인
+          if [ "$IMAGE_TAG" = "null" ] || [ -z "$IMAGE_TAG" ]; then
+            echo "❌ ERROR: DEV 레포지토리에서 유효한 이미지를 찾을 수 없습니다"
+            exit 1
+          fi
+          
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_OUTPUT
+          echo "✅ 승격할 이미지 태그: $IMAGE_TAG"
+      
       - name: Copy DEV image to PROD repository
         run: |
+          IMAGE_TAG=${{ steps.tag.outputs.IMAGE_TAG }}
           echo "🔄 DEV 이미지를 PROD로 복사 중..."
           
           # DEV에서 이미지 Pull
@@ -147,6 +173,7 @@ jobs:
       
       - name: Update PROD kustomization
         run: |
+          IMAGE_TAG=${{ steps.tag.outputs.IMAGE_TAG }}
           cd frontend/overlays/prod
           kustomize edit set image $ECR_REGISTRY/$PROD_REPOSITORY=$ECR_REGISTRY/$PROD_REPOSITORY:$IMAGE_TAG
           echo "📝 PROD kustomization 업데이트 완료"
@@ -154,6 +181,7 @@ jobs:
       
       - name: Commit and push PROD changes
         run: |
+          IMAGE_TAG=${{ steps.tag.outputs.IMAGE_TAG }}
           git config user.name "sdpup"
           git config user.email "epflswu12@gmail.com"
           if ! git diff --quiet; then
@@ -165,6 +193,7 @@ jobs:
       
       - name: Deployment summary
         run: |
+          IMAGE_TAG=${{ steps.tag.outputs.IMAGE_TAG }}
           echo "🎉 PROD 배포 완료!"
           echo "📦 배포된 이미지: $ECR_REGISTRY/$PROD_REPOSITORY:$IMAGE_TAG"
           echo "🔗 DEV에서 검증된 동일한 이미지가 PROD에 배포되었습니다."
