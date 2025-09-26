@@ -55,7 +55,7 @@ jobs:
       - name: Build, tag, and push to DEV ECR
         run: |
           docker build \
-          -f docker.dev \                   # ← 경량화 X 개발용 Dockerfile 지정
+          -f docker.dev \
           --build-arg VITE_VUE_API_URL=${{ secrets.VITE_VUE_API_URL }} \
           -t $ECR_REPOSITORY:${{ env.IMAGE_TAG }} .
           docker tag $ECR_REPOSITORY:${{ env.IMAGE_TAG }} $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.IMAGE_TAG }}
